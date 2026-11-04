@@ -12,7 +12,7 @@ Put `startrek.zip` (MAME `startrek` set) next to the program. Files are matched 
 
 | Input | Action |
 |---|---|
-| Mouse left / right | Spinner (click in the window to capture the mouse; Esc releases it) |
+| Mouse left / right | Spinner (mouse is captured while playing; Esc / menu releases it) |
 | Arrows / A, D | Spinner |
 | Left click / Z / Space | Fire (phasers) |
 | Right click / X | Photon torpedoes |

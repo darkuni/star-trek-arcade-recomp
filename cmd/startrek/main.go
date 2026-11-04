@@ -125,9 +125,9 @@ func onOff(b bool) string {
 	return "OFF"
 }
 
-// The mouse drives the spinner. It is captured while playing (so it can keep
-// turning past the window edge) and released for the menu or when the window
-// loses focus.
+// The mouse drives the spinner. It is captured whenever the game is playing
+// and focused (hidden pointer, unlimited movement), released for the menu or
+// when the window loses focus.
 func (g *game) setCapture(on bool) {
 	if on == g.captured {
 		return
@@ -188,12 +188,9 @@ func (g *game) Update() error {
 	if g.b == nil {
 		return nil
 	}
-	// Capture the mouse once the player clicks into the window.
-	if !ebiten.IsFocused() {
-		g.setCapture(false)
-	} else if !g.captured && inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		g.setCapture(true)
-	}
+	// The mouse is always captured while playing (no desktop pointer over the
+	// game); the menu or losing focus releases it.
+	g.setCapture(ebiten.IsFocused())
 	in := &g.b.Ctl
 
 	// Spinner: captured mouse X, gamepad stick / D-pad, arrow keys.
