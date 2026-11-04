@@ -152,6 +152,9 @@ func (g *game) buildMenu() {
 		{name: "PHOSPHOR TRAILS", kind: kLevel, val: &s.Trails, min: 0, max: 300},
 		{name: "BEAM DWELL", kind: kLevel, val: &s.Dwell, min: 0, max: 200},
 		{name: "BEAM WIDTH", kind: kLevel, val: &s.Width, min: 50, max: 200},
+		{name: "VOLUME", kind: kLevel, val: &s.Volume, min: 0, max: 200},
+		{name: "SPEECH", kind: kLevel, val: &s.Speech, min: 0, max: 200},
+		{name: "EFFECTS", kind: kLevel, val: &s.Effects, min: 0, max: 200},
 		{name: "SPINNER SPEED", kind: kLevel, val: &s.SpinSpeed, min: 20, max: 300},
 		{name: "REVERSE SPINNER", kind: kToggle, on: &s.InvertY},
 		{name: "FULL SCREEN", kind: kToggle, on: &s.Fullscreen},
@@ -182,6 +185,10 @@ func (g *game) applySettings() {
 	g.gpu.P = g.set.Params()
 	if g.audio != nil {
 		g.audio.setVolume(float32(g.set.Volume) / 100)
+	}
+	if g.b != nil {
+		g.b.Snd.SpeechGain = float32(g.set.Speech) / 100
+		g.b.Snd.SFXGain = float32(g.set.Effects) / 100
 	}
 	if ebiten.IsFullscreen() != g.set.Fullscreen {
 		ebiten.SetFullscreen(g.set.Fullscreen)

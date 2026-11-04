@@ -44,6 +44,7 @@ type game struct {
 	lastMX   int
 
 	audio   *audioOut
+	samples []float32
 	showFPS bool
 	ticks   int
 
@@ -237,6 +238,8 @@ func (g *game) Update() error {
 	in.Service = k(ebiten.Key9)
 
 	g.b.RunCycles(board.CPUHz / tps)
+	g.samples = g.b.Snd.TakeSamples(g.samples[:0])
+	g.audio.push(g.samples)
 	return nil
 }
 

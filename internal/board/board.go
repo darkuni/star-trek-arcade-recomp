@@ -7,6 +7,7 @@ package board
 
 import (
 	"startrek/internal/assets"
+	"startrek/internal/segasound"
 	"startrek/internal/vecgen"
 	"startrek/internal/vecrender"
 	"startrek/internal/z80"
@@ -54,13 +55,9 @@ type Board struct {
 	prevService bool
 	irqLine     bool
 
-	// Sound board interfaces (filled in when the boards exist).
-	USBIn       byte // latch written by the main CPU (port $3f)
-	USBOut      byte // latch from the 8035 (bits 0 and 7)
-	SpeechData  func(v byte)
-	SpeechCtrl  func(v byte)
-	USBData     func(v byte)
-	USBRAMWrite func(a uint16, v byte)
+	// Sound boards (Universal Sound Board + Speech Board).
+	Snd     *segasound.Sound
+	nextSnd uint64
 
 	// Frame receives each refresh's strokes.
 	Frame  func(segs []vecrender.Segment)
@@ -73,6 +70,7 @@ func New(r *assets.ROMs) *Board {
 	b := &Board{ROM: r, DSW1: 0x8d, DSW2: 0x33, FlipY: true, scrambledPC: 0xffff, coinLast: 0xff}
 	b.Gen = vecgen.New(r.PROMs[:])
 	b.CPU = &z80.CPU{Bus: b}
+	b.Snd = segasound.New(CPUHz, &b.USBRAM, r.SpeechCPU[:], r.SpeechData[:])
 	b.CPU.OnFetch = func(pc uint16, op uint8) {
 		b.CPU.Cycles += waitStates // opcode space tap (program tap counted in Read)
 		if op == 0x32 {
@@ -155,11 +153,8 @@ func (b *Board) Write(a uint16, v uint8) {
 		b.RAM[b.decryptOffset(a-0xc800)&0x7ff] = v
 	case a >= 0xd000 && a < 0xe000:
 		off := b.decryptOffset(a - 0xd000)
-		if b.USBRAMWrite != nil {
-			b.USBRAMWrite(off&0xfff, v)
-		} else if b.USBIn&0x80 != 0 {
-			b.USBRAM[off&0xfff] = v
-		}
+		b.Snd.RunTo(b.CPU.Cycles)
+		b.Snd.USB.RAMWrite(off&0xfff, v)
 	case a >= 0xe000 && a < 0xf000:
 		b.VRAM[b.decryptOffset(a-0xe000)&0xfff] = v
 	}
@@ -233,7 +228,8 @@ func (b *Board) In(port uint16) uint8 {
 		return ^(b.spinCount<<1 | b.spinSign)
 	case p == 0x3f:
 		b.CPU.Cycles += 200 // MAME: status reads stall the CPU
-		return b.USBOut&0x81 | b.USBIn&0x7e
+		b.Snd.RunTo(b.CPU.Cycles)
+		return b.Snd.USB.Status()
 	}
 	return 0xff
 }
@@ -250,18 +246,14 @@ func (b *Board) Out(port uint16, v uint8) {
 	case p == 0xf8:
 		b.spinSelect = v
 	case p == 0x38:
-		if b.SpeechData != nil {
-			b.SpeechData(v)
-		}
+		b.Snd.RunTo(b.CPU.Cycles)
+		b.Snd.Speech.Write(v)
 	case p == 0x3b:
-		if b.SpeechCtrl != nil {
-			b.SpeechCtrl(v)
-		}
+		b.Snd.RunTo(b.CPU.Cycles)
+		b.Snd.Control(v)
 	case p == 0x3f:
-		b.USBIn = v
-		if b.USBData != nil {
-			b.USBData(v)
-		}
+		b.Snd.RunTo(b.CPU.Cycles)
+		b.Snd.USB.Data(v)
 	}
 }
 
@@ -324,6 +316,10 @@ func (b *Board) RunCycles(n uint64) {
 			}
 		}
 		b.CPU.Step()
+		if b.CPU.Cycles >= b.nextSnd {
+			b.nextSnd = b.CPU.Cycles + 400 // ~100 us slices, like MAME's USB interleave
+			b.Snd.RunTo(b.CPU.Cycles)
+		}
 		if b.CPU.Cycles >= b.nextIRQ {
 			b.nextIRQ += IRQCycles
 			b.refresh()

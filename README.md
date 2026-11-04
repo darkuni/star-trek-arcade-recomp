@@ -31,7 +31,16 @@ Start = start, Select = coin, right bumper = menu, hold Select + Start to quit.
 
 - Z80 main board (315-0064 security chip, wait states, multiplier, spinner, interrupts) and Sega vector
   generator; matches MAME frame for frame.
-- Silent for now: Universal Sound Board and Speech Board (8035 + SP0250) are next. See docs/HARDWARE.md.
+- Sound: Universal Sound Board (8035 running the uploaded program, 3 x 8253, noise, RC filters) and
+  Speech Board (8035 + SP0250), ported from MAME and checked against MAME's output by level and spectrogram.
+  Menu: Volume, Speech, Effects. `STARTREK_NOAUDIO=1` runs without an audio device.
+
+## Tools
+
+```
+go run ./cmd/shot roms.zip out [-coin 5 -start 7 -spin 6] 10 15   # headless vector PNGs
+go run ./cmd/wav  roms.zip out.wav 30 5 7                        # headless audio capture
+```
 
 ## Releases
 
